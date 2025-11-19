@@ -1,349 +1,202 @@
 """
 agents/data_ingestor.py
 
-Robust ingestion utilities for SalesOps Suite.
+Data Ingestor Agent for SalesOps Suite.
 
-Features:
-- Load CSV / Parquet with safe defaults and encoding fallback
-- Normalize column names
-- Schema validation with helpful errors
-- Date parsing helpers (common columns: 'Order Date', 'Ship Date')
-- Preview utility returning JSON-serializable summaries
-- Save cleaned snapshot (parquet/csv)
-- Lightweight CLI for quick tests
+Responsibilities:
+- Load raw CSV data from flexible paths.
+- Handle encoding issues (utf-8 vs latin1).
+- Normalize column names (strip whitespace).
+- Parse dates robustly.
+- Validate schema against required columns.
+- Save processed snapshots to Parquet for downstream agents.
 
-Usage (example):
-    python agents/data_ingestor.py --path data/raw/superstore.csv --sample 100 --preview
+This module defines the DataIngestorAgent class.
 """
 
-from pathlib import Path
-from typing import Dict, List, Optional, Any, Tuple
-import pandas as pd
+import sys
 import json
 import logging
-import sys
-from datetime import datetime
+from pathlib import Path
+from typing import Optional, List, Any, Dict
+import pandas as pd
+import numpy as np
 
-# Logger setup
-logger = logging.getLogger("salesops.data_ingestor")
-if not logger.handlers:
-    ch = logging.StreamHandler(stream=sys.stdout)
-    fmt = logging.Formatter("%(asctime)s %(levelname)s %(name)s - %(message)s")
-    ch.setFormatter(fmt)
-    logger.addHandler(ch)
-logger.setLevel(logging.INFO)
+# Configure logging
+logging.basicConfig(
+    level=logging.INFO, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s"
+)
+logger = logging.getLogger(__name__)
 
 
-def _normalize_columns(df: pd.DataFrame, inplace: bool = True) -> pd.DataFrame:
+class DataIngestorAgent:
     """
-    Normalize dataframe column names: strip(), replace newlines, and keep original case.
+    Agent responsible for loading, validating, and cleaning sales data.
     """
-    cols = [c.strip().replace("\n", " ").replace("\r", "") for c in df.columns]
-    if inplace:
-        df.columns = cols
-        return df
-    else:
-        new = df.copy()
-        new.columns = cols
-        return new
 
-
-def _try_read_csv(path: Path, **kwargs) -> pd.DataFrame:
-    """
-    Try reading CSV with sensible defaults. Falls back to latin1 encoding if utf-8 fails.
-    """
-    base_kwargs = dict(low_memory=False, parse_dates=False)
-    base_kwargs.update(kwargs)
-    try:
-        logger.info(f"Reading CSV (utf-8): {path}")
-        return pd.read_csv(path, encoding="utf-8", **base_kwargs)
-    except (UnicodeDecodeError, ValueError) as e:
-        logger.warning(f"utf-8 read failed for {path}: {e}. Trying latin1.")
-        try:
-            return pd.read_csv(path, encoding="latin1", **base_kwargs)
-        except Exception as e2:
-            logger.error(f"Failed to read CSV {path} with latin1: {e2}")
-            raise
-
-
-def _read_parquet(path: Path, **kwargs) -> pd.DataFrame:
-    logger.info(f"Reading Parquet: {path}")
-    return pd.read_parquet(path, **kwargs)
-
-
-def load_table(
-    path: str,
-    sample_n: Optional[int] = None,
-    force_dtype: Optional[Dict[str, Any]] = None,
-    **kwargs,
-) -> pd.DataFrame:
-    """
-    Load a CSV or Parquet file into a pandas DataFrame.
-
-    Args:
-        path: Path to CSV or Parquet file
-        sample_n: If provided, return a random sample of this many rows (seeded)
-        force_dtype: optional column dtype mapping to pass to pandas reader
-        **kwargs: forwarded to pandas readers (e.g., usecols)
-
-    Returns:
-        pd.DataFrame
-    """
-    p = Path(path)
-    if not p.exists():
-        raise FileNotFoundError(f"{p} not found")
-
-    suffix = p.suffix.lower()
-    read_kwargs = {}
-    if force_dtype:
-        read_kwargs["dtype"] = force_dtype
-    read_kwargs.update(kwargs)
-
-    if suffix in [".csv", ".tsv", ".txt"]:
-        df = _try_read_csv(p, **read_kwargs)
-    elif suffix in [".parquet", ".pq"]:
-        df = _read_parquet(p, **read_kwargs)
-    else:
-        # attempt csv then parquet
-        try:
-            df = _try_read_csv(p, **read_kwargs)
-        except Exception:
-            df = _read_parquet(p, **read_kwargs)
-
-    # normalize columns
-    df = _normalize_columns(df, inplace=False)
-
-    # sampling
-    if (
-        sample_n is not None
-        and isinstance(sample_n, int)
-        and sample_n > 0
-        and len(df) > sample_n
-    ):
-        logger.info(f"Sampling {sample_n} rows from {len(df)}")
-        df = df.sample(n=sample_n, random_state=42).reset_index(drop=True)
-
-    logger.info(f"Loaded DataFrame shape={df.shape}")
-    return df
-
-
-def validate_schema(
-    df: pd.DataFrame,
-    required_cols: List[str],
-    optional_cols: Optional[List[str]] = None,
-) -> Dict[str, Any]:
-    """
-    Validate required columns exist. Return a validation report dict.
-    Raises ValueError if required columns are missing.
-
-    Report format:
-    {
-        "n_rows": int,
-        "n_cols": int,
-        "missing_required": [...],
-        "optional_missing": [...],
-        "extra_columns": [...]
-    }
-    """
-    optional_cols = optional_cols or []
-    cols = list(df.columns)
-    missing_required = [c for c in required_cols if c not in cols]
-    missing_optional = [c for c in optional_cols if c not in cols]
-    extra_columns = [c for c in cols if c not in required_cols + optional_cols]
-
-    report = {
-        "n_rows": len(df),
-        "n_cols": len(cols),
-        "missing_required": missing_required,
-        "missing_optional": missing_optional,
-        "extra_columns": extra_columns,
-    }
-
-    if missing_required:
-        logger.error(
-            f"Schema validation failed. Missing required columns: {missing_required}"
-        )
-        raise ValueError(f"Missing required columns: {missing_required}")
-
-    logger.info("Schema validation passed")
-    return report
-
-
-def ensure_datetime(
-    df: pd.DataFrame, col: str, fmt: Optional[str] = None, inplace: bool = True
-) -> pd.DataFrame:
-    """
-    Convert column to datetime, coercing errors to NaT. Returns df.
-    """
-    if col not in df.columns:
-        raise KeyError(f"{col} not found in dataframe")
-    converted = pd.to_datetime(df[col], format=fmt, errors="coerce")
-    df[col] = converted if inplace else converted.copy()
-    n_null = df[col].isna().sum()
-    if n_null > 0:
-        logger.warning(f"{n_null} NaT values in column {col} after datetime conversion")
-    return df
-
-
-def basic_preview(df: pd.DataFrame, n_head: int = 5) -> Dict[str, Any]:
-    """
-    Return a JSON-serializable preview:
-    - head rows (records)
-    - dtypes
-    - shape
-    - numeric summary (describe)
-    """
-    head = df.head(n_head).to_dict(orient="records")
-    dtypes = df.dtypes.apply(lambda x: str(x)).to_dict()
-    numeric_summary = {}
-    try:
-        numeric_summary = df.describe(include=[pd.np.number]).to_dict()
-    except Exception:
-        # fallback to pandas 2.x (avoid pd.np deprecation)
-        numeric_summary = df.select_dtypes(include=["number"]).describe().to_dict()
-
-    preview = {
-        "head": head,
-        "dtypes": dtypes,
-        "shape": df.shape,
-        "numeric_summary": numeric_summary,
-    }
-    logger.info(f"Generated preview for shape={df.shape}")
-    return preview
-
-
-def save_snapshot(
-    df: pd.DataFrame,
-    out_dir: str = "data/processed",
-    filename: Optional[str] = None,
-    to_parquet: bool = True,
-) -> str:
-    """
-    Save cleaned DataFrame snapshot. Returns path string.
-    """
-    out = Path(out_dir)
-    out.mkdir(parents=True, exist_ok=True)
-    if filename is None:
-        ts = datetime.utcnow().strftime("%Y%m%dT%H%M%SZ")
-        filename = f"snapshot_{ts}"
-    dest = out / (f"{filename}.parquet" if to_parquet else f"{filename}.csv")
-    if to_parquet:
-        df.to_parquet(dest, index=False)
-    else:
-        df.to_csv(dest, index=False)
-    logger.info(f"Saved snapshot to {dest}")
-    return str(dest)
-
-
-# CLI helper
-def _parse_args(argv: Optional[List[str]] = None) -> Any:
-    import argparse
-
-    parser = argparse.ArgumentParser(
-        prog="data_ingestor", description="SalesOps data ingestion CLI"
-    )
-    parser.add_argument("--path", required=True, help="Path to CSV/Parquet file")
-    parser.add_argument(
-        "--sample", type=int, default=None, help="Sample N rows for quick preview"
-    )
-    parser.add_argument(
-        "--preview", action="store_true", help="Print JSON preview to stdout"
-    )
-    parser.add_argument(
-        "--validate",
-        action="store_true",
-        help="Run schema validation with default required columns",
-    )
-    parser.add_argument(
-        "--datetime-cols",
-        nargs="*",
-        default=["Order Date", "Ship Date"],
-        help="Columns to parse as datetime",
-    )
-    parser.add_argument(
-        "--out", default=None, help="Filename (without ext) to save cleaned snapshot"
-    )
-    parser.add_argument(
-        "--no-parquet",
-        action="store_true",
-        help="Save snapshot as CSV instead of Parquet",
-    )
-    return parser.parse_args(argv)
-
-
-def _default_required_columns() -> List[str]:
-    # For the Superstore dataset — adjust if you change dataset
-    return [
-        "Order ID",
+    # Default columns we expect in the Superstore dataset
+    REQUIRED_COLUMNS = [
         "Order Date",
-        "Ship Date",
-        "Customer ID",
         "Sales",
-        "Quantity",
-        "Discount",
         "Profit",
-        "Category",
-        "Sub-Category",
         "Region",
+        "Category",
+        "Order ID",
     ]
 
+    def __init__(self, file_path: str):
+        """
+        Initialize the agent with the path to the raw CSV file.
 
-def main(argv: Optional[List[str]] = None):
-    args = _parse_args(argv)
-    path = args.path
-    df = load_table(path, sample_n=args.sample)
+        Args:
+            file_path: Path to the source CSV file.
+        """
+        self.file_path = Path(file_path)
+        self.df: Optional[pd.DataFrame] = None
 
-    # parse datetimes if present
-    for col in args.datetime_cols:
-        if col in df.columns:
+    def _try_read_csv(self) -> pd.DataFrame:
+        """
+        Internal helper: Attempts to read CSV with multiple encodings.
+        Global Superstore often requires 'latin1'.
+        """
+        encodings = ["utf-8", "latin1", "iso-8859-1", "cp1252"]
+
+        if not self.file_path.exists():
+            raise FileNotFoundError(f"CSV not found at {self.file_path}")
+
+        for enc in encodings:
             try:
-                df = ensure_datetime(df, col)
+                logger.info(f"Attempting read with encoding='{enc}'...")
+                df = pd.read_csv(self.file_path, encoding=enc)
+                logger.info(f"Success! Read {len(df)} rows.")
+                return df
+            except UnicodeDecodeError:
+                logger.warning(f"Encoding '{enc}' failed. Retrying...")
             except Exception as e:
-                logger.warning(f"Failed to parse datetime for {col}: {e}")
+                logger.error(f"Unexpected error reading {self.file_path}: {e}")
+                raise e
 
-    # run validation if requested
-    if args.validate:
-        required = _default_required_columns()
+        raise ValueError(f"Could not read {self.file_path} with any standard encoding.")
+
+    def _normalize_columns(self):
+        """
+        Internal helper: Strips whitespace from column headers.
+        """
+        if self.df is not None:
+            self.df.columns = [str(c).strip() for c in self.df.columns]
+
+    def validate_schema(self, required: List[str] = None) -> bool:
+        """
+        Checks if the DataFrame contains the required columns.
+
+        Args:
+            required: List of column names to check. Defaults to class REQUIRED_COLUMNS.
+
+        Returns:
+            bool: True if valid, False if columns are missing.
+        """
+        if self.df is None:
+            logger.warning("No data loaded to validate.")
+            return False
+
+        req = required or self.REQUIRED_COLUMNS
+        missing = [c for c in req if c not in self.df.columns]
+
+        if missing:
+            logger.error(f"Schema Validation Failed! Missing columns: {missing}")
+            return False
+
+        logger.info("Schema validation passed.")
+        return True
+
+    def ensure_datetime(self, date_cols: List[str] = None):
+        """
+        Converts specified columns to datetime objects.
+
+        Args:
+            date_cols: List of column names to convert.
+        """
+        if self.df is None:
+            return
+
+        cols = date_cols or ["Order Date", "Ship Date"]
+        for c in cols:
+            if c in self.df.columns:
+                # coerce errors=turn unparseable data into NaT
+                self.df[c] = pd.to_datetime(self.df[c], errors="coerce")
+
+                # Report on data quality
+                nat_count = self.df[c].isna().sum()
+                if nat_count > 0:
+                    logger.warning(
+                        f"Column '{c}' has {nat_count} invalid/missing dates."
+                    )
+
+    def clean_data(self) -> pd.DataFrame:
+        """
+        Main pipeline execution method.
+        Loads, normalizes, converts dates, and validates schema.
+
+        Returns:
+            pd.DataFrame: The cleaned dataframe.
+        """
+        # 1. Load
+        self.df = self._try_read_csv()
+
+        # 2. Normalize Headers
+        self._normalize_columns()
+
+        # 3. Convert Dates
+        self.ensure_datetime(["Order Date", "Ship Date"])
+
+        # 4. Drop rows with missing critical dates (essential for Time Series)
+        if "Order Date" in self.df.columns:
+            original_len = len(self.df)
+            self.df = self.df.dropna(subset=["Order Date"])
+            dropped = original_len - len(self.df)
+            if dropped > 0:
+                logger.info(f"Dropped {dropped} rows with missing Order Date.")
+
+        # 5. Validate
+        self.validate_schema()
+
+        # 6. Add helper time columns (useful for all downstream agents)
+        self.df["Order Year"] = self.df["Order Date"].dt.year
+        self.df["Order Month"] = self.df["Order Date"].dt.month
+
+        return self.df
+
+    def basic_preview(self):
+        """
+        Prints a quick summary of the loaded data.
+        """
+        if self.df is not None:
+            print("--- Data Preview ---")
+            print(f"Shape: {self.df.shape}")
+            print(f"Columns: {list(self.df.columns)}")
+            print("Head:")
+            print(self.df.head(3))
+        else:
+            print("No data loaded.")
+
+    def save_snapshot(self, output_path: str):
+        """
+        Saves the current DataFrame to Parquet format.
+
+        Args:
+            output_path: Destination file path (e.g., 'data/processed/file.parquet')
+        """
+        if self.df is None:
+            logger.warning("Cannot save snapshot: DataFrame is None.")
+            return
+
         try:
-            report = validate_schema(df, required_cols=required)
-            logger.info(f"Validation report: {report}")
+            out_p = Path(output_path)
+            out_p.parent.mkdir(parents=True, exist_ok=True)
+            self.df.to_parquet(out_p, index=False)
+            logger.info(f"Snapshot saved successfully to {out_p}")
         except Exception as e:
-            logger.error(f"Validation failed: {e}")
-            raise
-
-    # preview
-    if args.preview:
-        p = basic_preview(df)
-        print(json.dumps(p, indent=2, default=str))
-
-    # save snapshot if requested
-    if args.out:
-        saved = save_snapshot(df, filename=args.out, to_parquet=(not args.no_parquet))
-        print("Saved:", saved)
+            logger.error(f"Failed to save snapshot: {e}")
 
 
-if __name__ == "__main__":
-    main()
-
-
-# ✅ How to test it (exact commands)
-
-# Run a quick preview on your saved Superstore CSV:
-
-# # from repo root (ensure salesops conda env is active)
-# python agents/data_ingestor.py --path data/raw/superstore.csv --sample 200 --preview
-
-
-# You should get a JSON preview printed (head, dtypes, shape, numeric summary).
-
-# Validate schema (uses default required columns for Superstore):
-
-# python agents/data_ingestor.py --path data/raw/superstore.csv --validate
-
-
-# If validation fails it will raise a friendly error listing missing columns.
-
-# Save a cleaned snapshot (parquet):
-
-# python agents/data_ingestor.py --path data/raw/superstore.csv --out superstore_clean
-# # saved to data/processed/superstore_clean.parquet
+# End of Class

@@ -167,7 +167,7 @@ class KPIAgent:
         sigma = rev.std(ddof=0)
         z = (rev - mu) / (sigma if sigma != 0 else 1.0)
         out = pd.DataFrame(
-            {"period": rev.index, "revenue": rev.values, "zscore": z.values}
+            {"period": rev.index.astype(str), "revenue": rev.values, "zscore": z.values}
         )
         return out
 
@@ -190,7 +190,10 @@ class KPIAgent:
             orient="records"
         )
         payload["top_regions"] = self.revenue_by_region(n=10).to_dict(orient="records")
-        payload["negative_profit_orders"] = self.negative_profit_orders(n=10).to_dict(
-            orient="records"
-        )
+
+        neg_orders = self.negative_profit_orders(n=10).copy()
+        if self.date_col in neg_orders.columns:
+            neg_orders[self.date_col] = neg_orders[self.date_col].astype(str)
+
+        payload["negative_profit_orders"] = neg_orders.to_dict(orient="records")
         return payload
