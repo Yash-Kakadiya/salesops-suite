@@ -43,7 +43,7 @@ class AnomalyExplainerAgent:
     MAX_DELAY = 30.0
     CIRCUIT_BREAKER_THRESHOLD = 5
     BATCH_DELAY = 1.0
-    MAX_PROMPT_CHARS = 8000
+    MAX_PROMPT_CHARS = 7777
     EXPLANATION_VERSION = "1.0"
 
     # Schema Definition
@@ -57,7 +57,7 @@ class AnomalyExplainerAgent:
 
     def __init__(
         self,
-        model_name: str = "gemini-2.0-flash-lite-preview-02-05",
+        model_name: str = "gemini-2.5-flash-lite",
         dry_run: bool = False,
     ):
         load_dotenv()
@@ -71,7 +71,7 @@ class AnomalyExplainerAgent:
             self.model = Gemini(model=model_name)
 
         # Observability Paths
-        self.audit_dir = Path("outputs/observability")
+        self.audit_dir = Path("../outputs/observability")
         self.response_dir = self.audit_dir / "responses"
         self.audit_file = self.audit_dir / "llm_calls.jsonl"
 
