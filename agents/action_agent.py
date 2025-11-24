@@ -31,7 +31,7 @@ class ActionAgent:
     MAX_RETRIES = int(os.getenv("MAX_RETRIES", 3))
     RETRY_BACKOFF = float(os.getenv("RETRY_BACKOFF", 1.0))
 
-    def __init__(self, output_dir="outputs/actions"):
+    def __init__(self, output_dir="../outputs/actions"):
         self.output_dir = Path(output_dir)
         self.output_dir.mkdir(parents=True, exist_ok=True)
         self.action_log = self.output_dir / "actions.jsonl"
