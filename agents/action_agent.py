@@ -17,16 +17,15 @@ from pathlib import Path
 from datetime import datetime, timezone
 from typing import List, Dict, Any, Optional
 
-# Logging
-logging.basicConfig(
-    level=logging.INFO, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s"
-)
-logger = logging.getLogger(__name__)
+# Observability
+from observability.logger import timeit_span, get_logger
+from observability.metrics import ACTIONS_TOTAL
+
+logger = get_logger("ActionAgent")
 
 
 class ActionAgent:
 
-    # Config via Env
     MOCK_API_URL = os.getenv("MOCK_API_URL", "http://localhost:7777")
     MAX_RETRIES = int(os.getenv("MAX_RETRIES", 3))
     RETRY_BACKOFF = float(os.getenv("RETRY_BACKOFF", 1.0))
@@ -35,7 +34,6 @@ class ActionAgent:
         self.output_dir = Path(output_dir)
         self.output_dir.mkdir(parents=True, exist_ok=True)
         self.action_log = self.output_dir / "actions.jsonl"
-        # Thread safety for log writing
         self._lock = threading.Lock()
 
     def _generate_idempotency_key(self, anomaly_id: str, action_type: str) -> str:
@@ -43,7 +41,6 @@ class ActionAgent:
         return hashlib.md5(raw.encode()).hexdigest()
 
     def _sanitize_payload(self, payload: Dict[str, Any]) -> Dict[str, Any]:
-        """Redacts email addresses from the payload before sending."""
         sanitized = payload.copy()
         email_pattern = r"[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}"
         for k, v in sanitized.items():
@@ -54,28 +51,24 @@ class ActionAgent:
     def _validate_payload_schema(
         self, action_type: str, payload: Dict[str, Any]
     ) -> Optional[str]:
-        """
-        Pre-flight validation. Returns error string if invalid, None if valid.
-        """
         if action_type == "create_ticket":
             required = ["title", "priority", "anomaly_id"]
         elif action_type == "send_email":
             required = ["recipient", "subject", "body"]
         else:
             return f"Unknown action type: {action_type}"
-
         missing = [k for k in required if k not in payload]
         if missing:
             return f"Missing required fields: {missing}"
         return None
 
+    @timeit_span("action.plan")
     def plan_actions(self, enriched_anomaly: Dict[str, Any]) -> List[Dict[str, Any]]:
         actions = []
         anom_id = enriched_anomaly.get("anomaly_id")
         score = enriched_anomaly.get("score", 0)
         conf = enriched_anomaly.get("confidence", "Low")
 
-        # Logic: High Severity -> Ticket
         if score > 3.0 and conf == "High":
             actions.append(
                 {
@@ -127,25 +120,24 @@ class ActionAgent:
 
         return actions
 
+    @timeit_span("action.execute")
     def execute_action(self, action_plan: Dict[str, Any]) -> Dict[str, Any]:
         action_type = action_plan["type"]
         payload = self._sanitize_payload(action_plan["payload"])
         key = action_plan["idempotency_key"]
 
-        # 1. Pre-flight Validation
         val_error = self._validate_payload_schema(action_type, payload)
         if val_error:
             result = {
                 "status": "client_error",
                 "error": f"Validation Failed: {val_error}",
-                "timestamp": datetime.now(timezone.utc).isoformat(),
             }
             self._log_audit(action_plan, result)
+            ACTIONS_TOTAL.labels(type=action_type, status="client_error").inc()
             return result
 
         endpoint = "/tickets" if action_type == "create_ticket" else "/emails/send"
         url = f"{self.MOCK_API_URL}{endpoint}"
-
         headers = {"Content-Type": "application/json", "Idempotency-Key": key}
 
         attempts = 0
@@ -156,7 +148,6 @@ class ActionAgent:
                 resp = requests.post(url, json=payload, headers=headers, timeout=5)
                 latency = (time.time() - start_time) * 1000
 
-                # 2xx Success
                 if resp.status_code in [200, 201, 202]:
                     result = {
                         "status": "success",
@@ -167,20 +158,17 @@ class ActionAgent:
                         "timestamp": datetime.now(timezone.utc).isoformat(),
                     }
                     self._log_audit(action_plan, result)
+                    ACTIONS_TOTAL.labels(type=action_type, status="success").inc()
                     return result
 
-                # 429 Rate Limit (Respect Retry-After)
-                if resp.status_code == 429:
-                    retry_after = int(resp.headers.get("Retry-After", 2))
-                    jitter = random.uniform(0.1, 0.5)
-                    wait_time = retry_after + jitter
-                    logger.warning(f"Rate Limited (429). Waiting {wait_time:.2f}s.")
-                    time.sleep(wait_time)
-                    attempts += 1
-                    continue
-
-                # 4xx Client Error (Fail Fast)
                 if 400 <= resp.status_code < 500:
+                    if resp.status_code == 429:
+                        wait = int(resp.headers.get("Retry-After", 2))
+                        logger.warning(f"Rate Limited. Waiting {wait}s.")
+                        time.sleep(wait)
+                        attempts += 1
+                        continue
+
                     result = {
                         "status": "client_error",
                         "http_code": resp.status_code,
@@ -188,32 +176,29 @@ class ActionAgent:
                         "timestamp": datetime.now(timezone.utc).isoformat(),
                     }
                     self._log_audit(action_plan, result)
+                    ACTIONS_TOTAL.labels(type=action_type, status="client_error").inc()
                     return result
 
-                # 5xx Server Error (Retry)
                 logger.warning(f"Server Error {resp.status_code}. Retrying...")
 
             except requests.RequestException as e:
                 logger.warning(f"Network Error: {e}")
 
-            # Exponential Backoff + Jitter
             attempts += 1
             jitter = random.uniform(0, 0.3)
             wait = (self.RETRY_BACKOFF * (2 ** (attempts - 1))) + jitter
             time.sleep(wait)
 
-        # Failure
         result = {
             "status": "failed",
             "reason": "Max retries exceeded",
-            "attempts": attempts,
             "timestamp": datetime.now(timezone.utc).isoformat(),
         }
         self._log_audit(action_plan, result)
+        ACTIONS_TOTAL.labels(type=action_type, status="failed").inc()
         return result
 
     def _log_audit(self, plan: Dict, result: Dict):
-        """Rich Audit Logging with Thread Safety."""
         entry = {
             "timestamp": datetime.now(timezone.utc).isoformat(),
             "action_id": plan["action_id"],

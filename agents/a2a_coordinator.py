@@ -17,17 +17,18 @@ from pathlib import Path
 from typing import List, Dict, Any, Optional
 from dataclasses import dataclass, field
 
+# Observability Imports
+from observability.logger import timeit_span, get_logger
+from observability.metrics import RUNS_TOTAL
+
 # Import Agents
 from agents.data_ingestor import DataIngestorAgent
 from agents.anomaly_stats_agent import AnomalyStatAgent
 from agents.anomaly_llm_agent import AnomalyExplainerAgent
 from agents.action_agent import ActionAgent
 
-# Logging
-logging.basicConfig(
-    level=logging.INFO, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s"
-)
-logger = logging.getLogger("A2ACoordinator")
+# Use Structured Logger
+logger = get_logger("A2ACoordinator")
 
 
 @dataclass
@@ -59,7 +60,6 @@ class A2ACoordinator:
 
         # Agents (Propagate Dry Run)
         self.explainer = AnomalyExplainerAgent(dry_run=self.dry_run)
-        # ActionAgent reads config from Env or Init - we'll assume it handles safety internally via 'confirm_actions' flag in flow
         self.actor = ActionAgent(output_dir=str(self.run_dir))
 
         # State & Locking
@@ -85,7 +85,6 @@ class A2ACoordinator:
 
         while (time.time() - start) < timeout:
             try:
-                # Check for Stale Lock (> 10 seconds old)
                 if lock_file.exists():
                     lock_age = time.time() - lock_file.stat().st_mtime
                     if lock_age > 10:
@@ -94,7 +93,6 @@ class A2ACoordinator:
                         )
                         os.remove(lock_file)
 
-                # Create lock file (exclusive)
                 with open(lock_file, "x"):
                     with open(self.master_manifest_path, "a") as f:
                         f.write(json.dumps(manifest) + "\n")
@@ -162,7 +160,6 @@ class A2ACoordinator:
                 sleep_time = (base_delay * (2**attempt)) + random.uniform(0, 0.5)
                 time.sleep(sleep_time)
 
-        # Final Failure Log
         self._log_task(
             {
                 "task_id": ctx.task_id,
@@ -175,8 +172,9 @@ class A2ACoordinator:
         )
         raise last_err
 
-    # --- Task Logic ---
+    # --- Task Logic (Instrumented) ---
 
+    @timeit_span("coordinator.ingest")
     def run_ingest(self, csv_path: str) -> str:
         ctx = TaskContext(self.run_id, self.run_id, "Ingestor", timeout_seconds=30)
 
@@ -194,6 +192,7 @@ class A2ACoordinator:
 
         return self._execute_task(logic, ctx, csv_path)
 
+    @timeit_span("coordinator.detect")
     def run_detect(self, snapshot_path: str) -> List[Dict]:
         ctx = TaskContext(self.run_id, self.run_id, "Detector", timeout_seconds=60)
 
@@ -213,6 +212,7 @@ class A2ACoordinator:
 
         return self._execute_task(logic, ctx, snapshot_path)
 
+    @timeit_span("coordinator.explain")
     def run_explain(self, anomalies: List[Dict], workers: int) -> List[Dict]:
         ctx = TaskContext(self.run_id, self.run_id, "Explainer", timeout_seconds=300)
 
@@ -221,7 +221,6 @@ class A2ACoordinator:
                 return []
             results = []
 
-            # Fan-Out
             with concurrent.futures.ThreadPoolExecutor(max_workers=workers) as executor:
                 futures = {
                     executor.submit(self.explainer.batch_explain, [a]): a for a in anoms
@@ -241,6 +240,7 @@ class A2ACoordinator:
 
         return self._execute_task(logic, ctx, anomalies)
 
+    @timeit_span("coordinator.act")
     def run_act(self, enriched: List[Dict]) -> List[Dict]:
         ctx = TaskContext(self.run_id, self.run_id, "Actor", timeout_seconds=120)
 
@@ -255,11 +255,12 @@ class A2ACoordinator:
 
     # --- Orchestration ---
 
+    @timeit_span("coordinator.run_flow")
     def run(self, flow_config: Dict, inputs: Dict, session_id: str):
         logger.info(f"Starting Run {self.run_id}")
 
         manifest = {
-            "run_id": self.run_id,  # HIGH PRIORITY: Run ID at root
+            "run_id": self.run_id,
             "conversation_id": session_id,
             "start_ts": datetime.now(timezone.utc).isoformat(),
             "status": "running",
@@ -274,7 +275,7 @@ class A2ACoordinator:
 
             snap = self.run_ingest(csv_path)
             anoms = self.run_detect(snap)
-            enriched = self.run_explain(anoms[:5], workers)  # Use Configurable Workers
+            enriched = self.run_explain(anoms[:5], workers)
 
             if flow_config.get("confirm_actions", True) and not self.dry_run:
                 self.run_act(enriched)
@@ -282,11 +283,13 @@ class A2ACoordinator:
                 logger.info("Actions skipped (Dry Run or Confirmation False)")
 
             manifest["status"] = "completed"
+            RUNS_TOTAL.labels(status="completed").inc()  # Metric
 
         except Exception as e:
             manifest["status"] = "failed"
             manifest["error"] = str(e)
             logger.error(f"Run Failed: {e}")
+            RUNS_TOTAL.labels(status="failed").inc()  # Metric
 
         finally:
             manifest["end_ts"] = datetime.now(timezone.utc).isoformat()
