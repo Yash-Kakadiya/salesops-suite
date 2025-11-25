@@ -3,7 +3,8 @@ agents/anomaly_llm_agent.py
 
 Production-Grade Anomaly Explainer Agent.
 Features:
-- Strict JSON Schema Validation (Auto-fixes list/string hallucinations)
+- RAG (Retrieval Augmented Generation) using Memory Bank
+- Strict JSON Schema Validation
 - Robust Error Handling (Retries, Backoff, Circuit Breaker)
 - Full Observability (Audit Logs + Raw Responses + Token Est.)
 - Cost/Rate Limiting
@@ -25,6 +26,9 @@ from dotenv import load_dotenv
 from google.adk.models.google_llm import Gemini
 from google.genai import types
 
+# RAG Import
+from agents.memory_agent import MemoryAgent
+
 # Configure Logging
 logging.basicConfig(
     level=logging.INFO, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s"
@@ -44,7 +48,7 @@ class AnomalyExplainerAgent:
     CIRCUIT_BREAKER_THRESHOLD = 5
     BATCH_DELAY = 1.0
     MAX_PROMPT_CHARS = 7777
-    EXPLANATION_VERSION = "1.0"
+    EXPLANATION_VERSION = "1.1"  # Bumped for RAG support
 
     # Schema Definition
     REQUIRED_KEYS = [
@@ -57,7 +61,7 @@ class AnomalyExplainerAgent:
 
     def __init__(
         self,
-        model_name: str = "gemini-2.5-flash-lite",
+        model_name: str = "gemini-2.0-flash-lite-preview-02-05",
         dry_run: bool = False,
     ):
         load_dotenv()
@@ -70,8 +74,24 @@ class AnomalyExplainerAgent:
         if not self.dry_run:
             self.model = Gemini(model=model_name)
 
+        # Initialize Memory for RAG
+        # (Lazy init inside methods or robust try/except here is good practice,
+        # but direct init works if memory system is stable)
+        try:
+            self.memory = MemoryAgent()
+        except Exception as e:
+            logger.warning(
+                f"MemoryAgent failed to initialize: {e}. RAG will be disabled."
+            )
+            self.memory = None
+
         # Observability Paths
-        self.audit_dir = Path("../outputs/observability")
+        self.audit_dir = Path(
+            "../outputs/observability"
+        )  # Corrected path relative to project root usually
+        # If running from notebooks/, paths might need adjustment or absolute paths.
+        # Using relative "../outputs/" assumes CWD is project root.
+
         self.response_dir = self.audit_dir / "responses"
         self.audit_file = self.audit_dir / "llm_calls.jsonl"
 
@@ -95,7 +115,7 @@ class AnomalyExplainerAgent:
             val_str = f"{v:.2f}" if isinstance(v, float) else str(v)
             compact.append(f"{k}: {val_str}")
 
-        # Improvement 3: Use newlines for better LLM readability
+        # Use newlines for better LLM readability
         full_str = "\n".join(compact)
 
         if len(full_str) > 2000:
@@ -103,9 +123,18 @@ class AnomalyExplainerAgent:
         return full_str
 
     def _construct_prompt(self, record: Dict[str, Any]) -> str:
-        """Constructs prompt with explicit schema instructions."""
+        """Constructs prompt with explicit schema and RAG history."""
         entity = self._redact_pii(record.get("entity_id", "Unknown"))
         context_str = self._truncate_context(record.get("context", {}))
+
+        # --- RAG: Retrieve History ---
+        historical_context = "No history available."
+        if self.memory:
+            try:
+                historical_context = self.memory.retrieve_relevant_history(record)
+            except Exception as e:
+                logger.warning(f"RAG Retrieval Failed: {e}")
+        # -----------------------------
 
         prompt = f"""
 You are a Senior SalesOps Analyst. Analyze this sales anomaly.
@@ -120,18 +149,21 @@ DATA CONTEXT:
 STATISTICAL CONTEXT:
 {context_str}
 
+HISTORICAL CONTEXT (From Memory Bank):
+{historical_context}
+
 OUTPUT FORMAT:
 Return valid JSON with these exact keys:
 {{
     "explanation_short": "1 sentence summary",
-    "explanation_full": "2-3 sentence detailed analysis",
+    "explanation_full": "2-3 sentence detailed analysis. Reference history if relevant.",
     "suggested_actions": ["Action 1", "Action 2"],
     "confidence": "High/Medium/Low",
     "needs_human_review": boolean
 }}
 
 CONSTRAINT:
-- Rely ONLY on provided numbers.
+- Rely ONLY on provided numbers and history.
 - Do NOT invent external events.
 - Output pure JSON (no markdown).
 """
@@ -142,10 +174,10 @@ CONSTRAINT:
         ts = datetime.now(timezone.utc).isoformat()
         prompt_hash = hashlib.md5(prompt.encode()).hexdigest()
 
-        # Improvement 4: Estimate tokens
+        # Estimate tokens
         est_tokens = len(prompt) // 4
 
-        # 1. Save Raw Response (for debugging)
+        # 1. Save Raw Response
         raw_file = self.response_dir / f"{prompt_hash}.json"
         try:
             with open(raw_file, "w") as f:
@@ -186,7 +218,6 @@ CONSTRAINT:
         missing = []
 
         for key in self.REQUIRED_KEYS:
-            # Check existence
             if key not in validated:
                 missing.append(key)
                 # Defaults
@@ -197,13 +228,12 @@ CONSTRAINT:
                 else:
                     validated[key] = "N/A (Schema Error)"
 
-            # Improvement 1: Enforce List Type for actions
             if key == "suggested_actions":
                 val = validated[key]
                 if isinstance(val, str):
-                    validated[key] = [val]  # Fix hallucinated string
+                    validated[key] = [val]
                 elif not isinstance(val, list):
-                    validated[key] = []  # Fallback for bad types
+                    validated[key] = []
 
         if missing:
             logger.warning(f"Schema validation warning. Missing keys: {missing}")
@@ -282,7 +312,6 @@ CONSTRAINT:
         circuit_open = False
 
         for i, rec in enumerate(anomalies):
-            # Improvement 5: Explicit skipped flags
             if circuit_open:
                 skipped_rec = rec.copy()
                 skipped_rec["error"] = "SKIPPED"
@@ -305,7 +334,6 @@ CONSTRAINT:
                 enriched = rec.copy()
                 enriched.update(data)
 
-                # Improvement 2: Versioning in Meta
                 enriched["meta"] = {
                     "model": self.model_name,
                     "latency_ms": int(latency * 1000),
