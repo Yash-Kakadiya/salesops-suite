@@ -10,6 +10,7 @@ dependencies:
   - seaborn
   - scipy
   - ipykernel
+  - ipywidgets
   - notebook
   - pip
   - pyarrow

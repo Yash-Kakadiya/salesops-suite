@@ -1,0 +1,9 @@
+{
+  "metric": "Detector Quality",
+  "true_positives": 3,
+  "false_positives": 3152,
+  "missed_labels": 0,
+  "precision": 0.001,
+  "recall": 1.0,
+  "f1_score": 0.0019
+}

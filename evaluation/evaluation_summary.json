@@ -1,0 +1,30 @@
+{
+  "technical": {
+    "metric": "Detector Quality",
+    "true_positives": 2,
+    "false_positives": 3151,
+    "missed_labels": 0,
+    "precision": 0.0006,
+    "recall": 1.0,
+    "f1_score": 0.0013
+  },
+  "quality": {
+    "human_score": 0,
+    "schema": {
+      "metric": "LLM Schema Compliance",
+      "total_records": 5,
+      "valid_records": 5,
+      "compliance_rate": 1.0,
+      "errors": []
+    }
+  },
+  "business": {
+    "metric": "Business Impact",
+    "anomalies_processed": 5,
+    "negative_events": 0,
+    "total_revenue_at_risk": 0.0,
+    "estimated_annual_recovery": 0.0,
+    "one_time_recovery": 0.0,
+    "actions_automated": 5
+  }
+}

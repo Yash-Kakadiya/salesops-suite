@@ -1,0 +1,27 @@
+{
+    "project": "SalesOps Agent Suite",
+    "version": "1.0",
+    "thresholds": {
+        "detector": {
+            "f1_score": 0.75,
+            "recall": 0.80,
+            "precision": 0.70
+        },
+        "explainer": {
+            "schema_compliance": 1.0,
+            "human_helpfulness_min": 3.5
+        },
+        "action": {
+            "success_rate": 0.95,
+            "idempotency_check": true
+        },
+        "observability": {
+            "manifest_completeness": 1.0,
+            "audit_completeness": 1.0
+        }
+    },
+    "metrics_definitions": {
+        "f1_score": "Harmonic mean of precision and recall on labeled anomalies",
+        "idempotency_check": "Re-running action with same ID must yield same result without side effects"
+    }
+}
