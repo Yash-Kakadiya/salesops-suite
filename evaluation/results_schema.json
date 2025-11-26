@@ -1,1 +1,7 @@
-{"metric": "LLM Schema Compliance", "total_records": 5, "valid_records": 5, "compliance_rate": 1.0, "errors": []}
+{
+  "metric": "LLM Schema Compliance",
+  "total_records": 5,
+  "valid_records": 5,
+  "compliance_rate": 1.0,
+  "errors": []
+}
