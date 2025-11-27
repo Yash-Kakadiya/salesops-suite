@@ -1,0 +1,167 @@
+[
+  {
+    "anomaly_id": "iqr_Central_2016-10-02_s21",
+    "level": "region",
+    "entity_id": "Central",
+    "period_start": "2016-10-02",
+    "period_end": "2016-10-02",
+    "metric": "Sales",
+    "value": 18336.74,
+    "expected": 914.88,
+    "score": 21.06,
+    "detector": "iqr",
+    "reason": "Outside Tukey Fence (Score=21.06)",
+    "context": {
+      "Q1": 87.56,
+      "Q3": 914.88,
+      "IQR": 827.32
+    },
+    "explanation_short": "The Central region experienced sales of 18,336.74, significantly exceeding the expected value of 914.88 by a factor of 21.06.",
+    "explanation_full": "The observed sales of 18,336.74 in the Central region are dramatically higher than the expected sales of 914.88. This represents a score of 21.06, indicating a substantial outlier. Given the statistical context, the actual sales far surpass the third quartile (Q3) of 914.88, suggesting an extraordinary event.",
+    "suggested_actions": [
+      "Investigate the source of the high sales in the Central region.",
+      "Verify data accuracy for sales in the Central region.",
+      "Analyze if any specific product or customer contributed disproportionately to this spike."
+    ],
+    "confidence": "High",
+    "needs_human_review": true,
+    "meta": {
+      "model": "gemini-2.5-flash-lite",
+      "latency_ms": 1785,
+      "timestamp": "2025-11-27T17:18:07.362352+00:00",
+      "version": "1.1"
+    }
+  },
+  {
+    "anomaly_id": "iqr_South_2014-03-18_s24",
+    "level": "region",
+    "entity_id": "South",
+    "period_start": "2014-03-18",
+    "period_end": "2014-03-18",
+    "metric": "Sales",
+    "value": 23661.228,
+    "expected": 1159.38,
+    "score": 24.21,
+    "detector": "iqr",
+    "reason": "Outside Tukey Fence (Score=24.21)",
+    "context": {
+      "Q1": 229.86,
+      "Q3": 1159.38,
+      "IQR": 929.52
+    },
+    "explanation_short": "Sales in the South region are significantly higher than expected, indicated by a score of 24.21.",
+    "explanation_full": "The recorded sales for the South region, 23,661.23, are dramatically higher than the expected value of 1,159.38. This deviation is substantial, as the actual sales are over 20 times the expected amount. There are no historical anomalies to compare this against, making it a unique event.",
+    "suggested_actions": [
+      "Investigate the source of the reported sales figure to verify accuracy.",
+      "Analyze recent sales activities and deal closures within the South region for potential drivers.",
+      "Confirm if any new product launches or significant marketing campaigns occurred in the South region."
+    ],
+    "confidence": "High",
+    "needs_human_review": true,
+    "meta": {
+      "model": "gemini-2.5-flash-lite",
+      "latency_ms": 1389,
+      "timestamp": "2025-11-27T17:18:09.471017+00:00",
+      "version": "1.1"
+    }
+  },
+  {
+    "anomaly_id": "iqr_South_2016-02-02_s22",
+    "level": "region",
+    "entity_id": "South",
+    "period_start": "2016-02-02",
+    "period_end": "2016-02-02",
+    "metric": "Sales",
+    "value": 8805.04,
+    "expected": 579.93,
+    "score": 22.22,
+    "detector": "iqr",
+    "reason": "Outside Tukey Fence (Score=22.22)",
+    "context": {
+      "Q1": 209.72,
+      "Q3": 579.93,
+      "IQR": 370.21
+    },
+    "explanation_short": "South region sales significantly exceeded expectations, driven by a substantial deviation from the expected value.",
+    "explanation_full": "The South region reported sales of 8,805.04, which is drastically higher than the expected value of 579.93. This represents a deviation score of 22.22, indicating an extreme anomaly. Given the lack of historical context for similar events, this anomaly warrants immediate investigation to understand the cause.",
+    "suggested_actions": [
+      "Investigate the source of the exceptionally high sales in the South region.",
+      "Verify data integrity for the reported sales figure in the South region.",
+      "Analyze contributing factors such as large deals, new market entries, or reporting errors."
+    ],
+    "confidence": "High",
+    "needs_human_review": true,
+    "meta": {
+      "model": "gemini-2.5-flash-lite",
+      "latency_ms": 1596,
+      "timestamp": "2025-11-27T17:18:09.752018+00:00",
+      "version": "1.1"
+    }
+  },
+  {
+    "anomaly_id": "iqr_South_2015-03-16_s20",
+    "level": "region",
+    "entity_id": "South",
+    "period_start": "2015-03-16",
+    "period_end": "2015-03-16",
+    "metric": "Sales",
+    "value": 6911.7,
+    "expected": 354.08,
+    "score": 20.57,
+    "detector": "iqr",
+    "reason": "Outside Tukey Fence (Score=20.57)",
+    "context": {
+      "Q1": 35.25,
+      "Q3": 354.08,
+      "IQR": 318.83
+    },
+    "explanation_short": "The South region experienced sales significantly above the expected value, indicating a potential anomaly.",
+    "explanation_full": "The observed sales of 6,911.70 in the South region are vastly higher than the expected value of 354.08. This deviation, represented by a score of 20.57, is more than 20 times the upper quartile (Q3) of 354.08, suggesting a substantial and unusual spike in sales. No historical context was found to explain this deviation.",
+    "suggested_actions": [
+      "Investigate the source of the unusually high sales in the South region.",
+      "Verify data integrity for sales transactions in the South region.",
+      "Analyze sales performance by product/service and salesperson within the South region."
+    ],
+    "confidence": "High",
+    "needs_human_review": true,
+    "meta": {
+      "model": "gemini-2.5-flash-lite",
+      "latency_ms": 1387,
+      "timestamp": "2025-11-27T17:18:09.752018+00:00",
+      "version": "1.1"
+    }
+  },
+  {
+    "anomaly_id": "iqr_West_2016-03-10_s16",
+    "level": "region",
+    "entity_id": "West",
+    "period_start": "2016-03-10",
+    "period_end": "2016-03-10",
+    "metric": "Sales",
+    "value": 7662.9580000000005,
+    "expected": 507.17,
+    "score": 16.73,
+    "detector": "iqr",
+    "reason": "Outside Tukey Fence (Score=16.73)",
+    "context": {
+      "Q1": 79.54,
+      "Q3": 507.17,
+      "IQR": 427.63
+    },
+    "explanation_short": "Sales in the West region are significantly higher than expected, indicated by a high anomaly score.",
+    "explanation_full": "The reported sales of 7,662.96 in the West region are substantially higher than the expected value of 507.17. This represents a significant deviation, with the actual sales being over 15 times the expected amount. There is no historical data to suggest this is a recurring pattern.",
+    "suggested_actions": [
+      "Investigate the source of the sales data for the West region to identify any data entry errors or system glitches.",
+      "Review recent sales activities and any new deals or large orders that may have contributed to this spike.",
+      "Verify if the 'Expected' value is correctly calculated or if it represents a baseline that was significantly exceeded."
+    ],
+    "confidence": "High",
+    "needs_human_review": true,
+    "meta": {
+      "model": "gemini-2.5-flash-lite",
+      "latency_ms": 1451,
+      "timestamp": "2025-11-27T17:18:11.939115+00:00",
+      "version": "1.1"
+    }
+  }
+]
