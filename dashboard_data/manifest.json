@@ -1,0 +1,53 @@
+{
+  "run_id": "run_20251127T142745Z_5db0df",
+  "conversation_id": "session:live-demo",
+  "start_ts": "2025-11-27T14:27:45.959429+00:00",
+  "status": "completed",
+  "config": {
+    "id": "integration_demo",
+    "parallelism": 3,
+    "confirm_actions": true,
+    "max_anomalies": 5
+  },
+  "tasks": [
+    {
+      "task_id": "Ingestor",
+      "status": "success",
+      "duration_ms": 195.02,
+      "attempts": 1,
+      "start_ts": "2025-11-27T14:27:45.959430+00:00",
+      "end_ts": "2025-11-27T14:27:46.154453+00:00"
+    },
+    {
+      "task_id": "Detector",
+      "status": "success",
+      "duration_ms": 318.82,
+      "attempts": 1,
+      "start_ts": "2025-11-27T14:27:46.154454+00:00",
+      "end_ts": "2025-11-27T14:27:46.473278+00:00"
+    },
+    {
+      "task_id": "Explainer",
+      "status": "success",
+      "duration_ms": 7261.32,
+      "attempts": 1,
+      "start_ts": "2025-11-27T14:27:46.473278+00:00",
+      "end_ts": "2025-11-27T14:27:53.734596+00:00"
+    },
+    {
+      "task_id": "Actor",
+      "status": "success",
+      "duration_ms": 20643.37,
+      "attempts": 1,
+      "start_ts": "2025-11-27T14:27:53.736598+00:00",
+      "end_ts": "2025-11-27T14:28:14.379967+00:00"
+    }
+  ],
+  "artifacts": {
+    "snapshot": "D:\\01. Github\\salesops-suite\\outputs\\runs\\run_20251127T142745Z_5db0df\\snapshot.parquet",
+    "anomalies": "D:\\01. Github\\salesops-suite\\outputs\\runs\\run_20251127T142745Z_5db0df\\anomalies.json",
+    "explanations": "D:\\01. Github\\salesops-suite\\outputs\\runs\\run_20251127T142745Z_5db0df\\enriched_anomalies.json",
+    "actions_log": "D:\\01. Github\\salesops-suite\\outputs\\runs\\run_20251127T142745Z_5db0df\\actions.jsonl"
+  },
+  "end_ts": "2025-11-27T14:28:14.379967+00:00"
+}
