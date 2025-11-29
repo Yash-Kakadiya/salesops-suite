@@ -34,6 +34,11 @@ class JsonFormatter(logging.Formatter):
         return json.dumps(log_record)
 
 
+def to_snake(name):
+    """Converts CamelCase to snake_case."""
+    return re.sub(r"(?<!^)(?=[A-Z])", "_", name).lower()
+
+
 def get_logger(name: str, output_dir: str = None):
     """Configures a file-based JSON logger."""
     # Determine output dir: Arg > Env > Default
@@ -45,9 +50,7 @@ def get_logger(name: str, output_dir: str = None):
     logger = logging.getLogger(name)
     logger.setLevel(logging.INFO)
 
-    def to_snake(n):
-        return re.sub(r'(?<!^)(?=[A-Z])', '_', n).lower()
-
+    # Robust filename: TestComponent -> test_component.jsonl
     filename = f"{to_snake(name)}.jsonl"
     target_file = Path(output_dir) / filename
 
@@ -83,7 +86,6 @@ def get_logger(name: str, output_dir: str = None):
 
 def _write_span(span: Dict):
     """Atomic append to trace file."""
-    # Dynamic path based on Env Var (Crucial for Tests)
     out_dir = os.getenv("OBSERVABILITY_DIR", "outputs/observability")
     trace_file = Path(out_dir) / "trace_spans.jsonl"
 

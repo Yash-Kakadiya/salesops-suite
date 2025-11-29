@@ -9,7 +9,6 @@ from pathlib import Path
 # This tells Python to look in "salesops-suite/" so it can find "dashboard"
 project_root = Path(__file__).resolve().parents[2]
 sys.path.append(str(project_root))
-# --------------------------------------------------------------------
 
 # Now we can safely import from our local packages
 from dashboard.utils.style import apply_custom_css, sidebar_logo

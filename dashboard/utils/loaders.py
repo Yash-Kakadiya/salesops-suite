@@ -1,7 +1,9 @@
 """
 dashboard/utils/loaders.py
-Data Access Layer for Streamlit.
-Loads artifacts from the 'dashboard_data' directory.
+Unified + Improved Data Access Layer for Streamlit.
+- Robust path discovery
+- Better error visibility
+- Rich metadata extraction
 """
 
 import json
@@ -10,27 +12,45 @@ import streamlit as st
 from pathlib import Path
 from typing import Dict, Any, List
 
-# Path to the artifacts exported by run_pipeline.py
-# dashboard/utils/loaders.py -> ../../dashboard_data
-DATA_DIR = Path(__file__).resolve().parents[2] / "dashboard_data"
+# ---------------------------------------------------------
+# ROBUST PATH FINDING
+# ---------------------------------------------------------
+current_file = Path(__file__).resolve()
+project_root = current_file.parents[2]
+DATA_DIR = project_root / "dashboard_data"
+
+# Fallback for cloud/docker/custom working directories
+if not DATA_DIR.exists():
+    DATA_DIR = Path("dashboard_data").resolve()
 
 
-@st.cache_data(ttl=60)  # Cache for 1 minute so we see updates
+# ---------------------------------------------------------
+# LOAD SNAPSHOT
+# ---------------------------------------------------------
+@st.cache_data(ttl=60)
 def load_snapshot() -> pd.DataFrame:
     """Loads the main sales dataset."""
     path = DATA_DIR / "snapshot.parquet"
     if not path.exists():
         return pd.DataFrame()
+
     try:
         df = pd.read_parquet(path)
+
+        # Normalize dates if present
         if "Order Date" in df.columns:
             df["Order Date"] = pd.to_datetime(df["Order Date"])
+
         return df
+
     except Exception as e:
         st.error(f"Failed to load snapshot: {e}")
         return pd.DataFrame()
 
 
+# ---------------------------------------------------------
+# LOAD ANOMALIES
+# ---------------------------------------------------------
 @st.cache_data(ttl=60)
 def load_anomalies() -> pd.DataFrame:
     """Loads detected anomalies."""
@@ -41,16 +61,21 @@ def load_anomalies() -> pd.DataFrame:
     try:
         with open(path, "r") as f:
             data = json.load(f)
-        # Handle different structures (list vs dict wrapper)
+
         rows = data.get("all_anomalies", []) if isinstance(data, dict) else data
         return pd.DataFrame(rows)
-    except Exception:
+
+    except Exception as e:
+        st.error(f"Error loading anomalies: {e}")
         return pd.DataFrame()
 
 
+# ---------------------------------------------------------
+# LOAD ENRICHED DATA
+# ---------------------------------------------------------
 @st.cache_data(ttl=60)
 def load_enriched() -> pd.DataFrame:
-    """Loads AI-enriched explanations."""
+    """Loads AI-enriched explanations and flattens metadata."""
     path = DATA_DIR / "enriched.json"
     if not path.exists():
         return pd.DataFrame()
@@ -59,46 +84,49 @@ def load_enriched() -> pd.DataFrame:
         with open(path, "r") as f:
             data = json.load(f)
 
-        # FIX: Pre-process list to flatten 'meta' before DataFrame creation
-        flattened_data = []
-        for item in data:
-            # Copy basic fields
-            flat_item = item.copy()
+        flattened = []
 
-            # Extract Meta fields safely
+        for item in data:
+            flat = item.copy()
+
             meta = item.get("meta", {})
             if isinstance(meta, dict):
-                flat_item["model"] = meta.get("model", "Unknown")
-                flat_item["latency"] = meta.get("latency_ms", 0)
-                flat_item["version"] = meta.get("version", "1.0")
+                flat["model"] = meta.get("model", "Unknown")
+                flat["latency"] = meta.get("latency_ms", 0)
+                flat["version"] = meta.get("version", "1.0")  # From Version 1
             else:
-                flat_item["model"] = "Unknown"
-                flat_item["latency"] = 0
+                flat["model"] = "Unknown"
+                flat["latency"] = 0
+                flat["version"] = "1.0"
 
-            flattened_data.append(flat_item)
+            flattened.append(flat)
 
-        return pd.DataFrame(flattened_data)
+        return pd.DataFrame(flattened)
+
     except Exception as e:
-        print(f"Error loading enriched: {e}")
+        st.error(f"Error loading enriched data: {e}")
         return pd.DataFrame()
 
 
+# ---------------------------------------------------------
+# LOAD ACTIONS / AUDIT LOGS
+# ---------------------------------------------------------
 @st.cache_data(ttl=60)
 def load_actions() -> pd.DataFrame:
     """Loads action audit logs."""
     path = DATA_DIR / "actions.jsonl"
-    data = []
-    if path.exists():
-        with open(path, "r") as f:
-            for line in f:
-                if line.strip():
-                    data.append(json.loads(line))
+    rows = []
 
-    df = pd.DataFrame(data)
+    try:
+        if path.exists():
+            with open(path, "r") as f:
+                for line in f:
+                    if line.strip():
+                        rows.append(json.loads(line))
 
-    if not df.empty:
-        # FIX: Extract nested fields
-        if "result" in df.columns:
+        df = pd.DataFrame(rows)
+
+        if not df.empty and "result" in df.columns:
             df["status"] = df["result"].apply(
                 lambda x: x.get("status") if isinstance(x, dict) else "unknown"
             )
@@ -106,14 +134,42 @@ def load_actions() -> pd.DataFrame:
                 lambda x: x.get("http_code") if isinstance(x, dict) else 0
             )
 
-    return df
+        return df
+
+    except Exception as e:
+        st.error(f"Error loading actions: {e}")
+        return pd.DataFrame()
 
 
+# ---------------------------------------------------------
+# LOAD MANIFEST / PIPELINE RUN INFO
+# ---------------------------------------------------------
 @st.cache_data(ttl=60)
 def get_latest_run_info() -> Dict:
-    """Loads the pipeline manifest."""
+    """Loads the pipeline manifest.json."""
     path = DATA_DIR / "manifest.json"
-    if path.exists():
-        with open(path, "r") as f:
-            return json.load(f)
-    return {}
+
+    try:
+        if path.exists():
+            with open(path, "r") as f:
+                return json.load(f)
+        return {}
+
+    except Exception as e:
+        st.error(f"Error loading manifest: {e}")
+        return {}
+
+
+# ---------------------------------------------------------
+# KPI HELPER (Added)
+# ---------------------------------------------------------
+def get_kpis(df: pd.DataFrame) -> Dict[str, Any]:
+    """Calculates high-level KPIs from the snapshot."""
+    if df.empty:
+        return {"revenue": 0, "profit": 0, "margin": 0}
+
+    rev = df["Sales"].sum()
+    profit = df["Profit"].sum()
+    margin = (profit / rev) * 100 if rev > 0 else 0
+
+    return {"revenue": rev, "profit": profit, "margin": margin}

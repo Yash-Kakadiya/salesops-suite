@@ -3,7 +3,9 @@ import sys
 import pandas as pd
 from pathlib import Path
 
-sys.path.append(str(Path(__file__).resolve().parents[2]))
+# Robust Root Path
+project_root = Path(__file__).resolve().parents[2]
+sys.path.append(str(project_root))
 
 from dashboard.utils.style import apply_custom_css, sidebar_logo
 from memory.memory_bank import MemoryBank
@@ -19,7 +21,7 @@ st.markdown(
 
 # Initialize Bank (Read-Only Mode technically, but we query it)
 # Point to the production bank
-BANK_PATH = Path("outputs/memory/memory_bank.json")
+BANK_PATH = project_root / "outputs" / "memory" / "memory_bank.json"
 
 if BANK_PATH.exists():
     try:

@@ -1,7 +1,7 @@
 {
-  "run_id": "run_20251127T142745Z_5db0df",
+  "run_id": "run_20251129T052322Z_16e5dd",
   "conversation_id": "session:live-demo",
-  "start_ts": "2025-11-27T14:27:45.959429+00:00",
+  "start_ts": "2025-11-29T05:23:22.395053+00:00",
   "status": "completed",
   "config": {
     "id": "integration_demo",
@@ -13,41 +13,41 @@
     {
       "task_id": "Ingestor",
       "status": "success",
-      "duration_ms": 195.02,
+      "duration_ms": 211.96,
       "attempts": 1,
-      "start_ts": "2025-11-27T14:27:45.959430+00:00",
-      "end_ts": "2025-11-27T14:27:46.154453+00:00"
+      "start_ts": "2025-11-29T05:23:22.395054+00:00",
+      "end_ts": "2025-11-29T05:23:22.607013+00:00"
     },
     {
       "task_id": "Detector",
       "status": "success",
-      "duration_ms": 318.82,
+      "duration_ms": 310.92,
       "attempts": 1,
-      "start_ts": "2025-11-27T14:27:46.154454+00:00",
-      "end_ts": "2025-11-27T14:27:46.473278+00:00"
+      "start_ts": "2025-11-29T05:23:22.609018+00:00",
+      "end_ts": "2025-11-29T05:23:22.919934+00:00"
     },
     {
       "task_id": "Explainer",
       "status": "success",
-      "duration_ms": 7261.32,
+      "duration_ms": 7579.22,
       "attempts": 1,
-      "start_ts": "2025-11-27T14:27:46.473278+00:00",
-      "end_ts": "2025-11-27T14:27:53.734596+00:00"
+      "start_ts": "2025-11-29T05:23:22.920935+00:00",
+      "end_ts": "2025-11-29T05:23:30.500157+00:00"
     },
     {
       "task_id": "Actor",
       "status": "success",
-      "duration_ms": 20643.37,
+      "duration_ms": 20466.13,
       "attempts": 1,
-      "start_ts": "2025-11-27T14:27:53.736598+00:00",
-      "end_ts": "2025-11-27T14:28:14.379967+00:00"
+      "start_ts": "2025-11-29T05:23:30.500158+00:00",
+      "end_ts": "2025-11-29T05:23:50.966286+00:00"
     }
   ],
   "artifacts": {
-    "snapshot": "D:\\01. Github\\salesops-suite\\outputs\\runs\\run_20251127T142745Z_5db0df\\snapshot.parquet",
-    "anomalies": "D:\\01. Github\\salesops-suite\\outputs\\runs\\run_20251127T142745Z_5db0df\\anomalies.json",
-    "explanations": "D:\\01. Github\\salesops-suite\\outputs\\runs\\run_20251127T142745Z_5db0df\\enriched_anomalies.json",
-    "actions_log": "D:\\01. Github\\salesops-suite\\outputs\\runs\\run_20251127T142745Z_5db0df\\actions.jsonl"
+    "snapshot": "D:\\01. Github\\salesops-suite\\outputs\\runs\\run_20251129T052322Z_16e5dd\\snapshot.parquet",
+    "anomalies": "D:\\01. Github\\salesops-suite\\outputs\\runs\\run_20251129T052322Z_16e5dd\\anomalies.json",
+    "explanations": "D:\\01. Github\\salesops-suite\\outputs\\runs\\run_20251129T052322Z_16e5dd\\enriched_anomalies.json",
+    "actions_log": "D:\\01. Github\\salesops-suite\\outputs\\runs\\run_20251129T052322Z_16e5dd\\actions.jsonl"
   },
-  "end_ts": "2025-11-27T14:28:14.379967+00:00"
+  "end_ts": "2025-11-29T05:23:50.968284+00:00"
 }
