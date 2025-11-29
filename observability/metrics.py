@@ -1,16 +1,22 @@
 """
 observability/metrics.py
-Metrics collector (Prometheus + Local Snapshot).
+Unified Metrics Collector (Prometheus + Local Snapshot).
+
+- Uses dynamic OBSERVABILITY_DIR for snapshotting (good for tests/CI)
+- Cleaner formatting + durable snapshot logic
+- Exposes optional Prometheus HTTP endpoint
 """
 
+import os
 import json
 import time
 import threading
 from pathlib import Path
-from typing import Dict
 from prometheus_client import Counter, Histogram, generate_latest, CONTENT_TYPE_LATEST
 
-# --- Metric Definitions ---
+# ---------------------------------------------------------------------
+# METRIC DEFINITIONS
+# ---------------------------------------------------------------------
 
 RUNS_TOTAL = Counter(
     "salesops_runs_total", "Total number of Coordinator runs", ["status"]
@@ -33,19 +39,29 @@ ACTIONS_TOTAL = Counter(
 
 MEMORY_OPS = Counter("salesops_memory_ops_total", "Total Memory Operations", ["op"])
 
-# --- Snapshotting ---
+# ---------------------------------------------------------------------
+# SNAPSHOTTING
+# ---------------------------------------------------------------------
 
-SNAPSHOT_FILE = Path("outputs/observability/metrics_snapshot.json")
+
+def get_snapshot_file() -> Path:
+    """
+    Returns the snapshot file path.
+    Uses OBSERVABILITY_DIR env var (better for testing / docker / CI).
+    """
+    out_dir = os.getenv("OBSERVABILITY_DIR", "outputs/observability")
+    return Path(out_dir) / "metrics_snapshot.json"
 
 
 def save_metrics_snapshot():
-    """Dumps current metrics to JSON for Notebook visualization."""
-    # This is a simplified dump of the internal Prometheus registry state
-    # For a real scraper, use /metrics endpoint. For demo, this file is easier.
-
+    """
+    Dumps all 'salesops_*' Prometheus metrics to a JSON file.
+    Used for Jupyter notebooks, dashboards, or debugging without /metrics.
+    """
     from prometheus_client import REGISTRY
 
     data = []
+    now = time.time()
 
     for metric in REGISTRY.collect():
         if metric.name.startswith("salesops"):
@@ -55,17 +71,27 @@ def save_metrics_snapshot():
                         "name": sample.name,
                         "labels": sample.labels,
                         "value": sample.value,
-                        "timestamp": time.time(),
+                        "timestamp": now,
                     }
                 )
 
-    SNAPSHOT_FILE.parent.mkdir(parents=True, exist_ok=True)
-    with open(SNAPSHOT_FILE, "w") as f:
+    snapshot_file = get_snapshot_file()
+    snapshot_file.parent.mkdir(parents=True, exist_ok=True)
+
+    with open(snapshot_file, "w") as f:
         json.dump(data, f, indent=2)
 
 
-# --- HTTP Server (Optional) ---
+# ---------------------------------------------------------------------
+# PROMETHEUS HTTP SERVER (OPTIONAL)
+# ---------------------------------------------------------------------
+
+
 def start_metrics_server(port=8001):
+    """
+    Starts a simple Prometheus /metrics server on the given port.
+    Runs in a daemon thread so it does not block the main process.
+    """
     from wsgiref.simple_server import make_server
 
     def app(environ, start_response):
@@ -73,6 +99,7 @@ def start_metrics_server(port=8001):
         start_response("200 OK", [("Content-Type", CONTENT_TYPE_LATEST)])
         return [data]
 
-    t = threading.Thread(target=lambda: make_server("", port, app).serve_forever())
-    t.daemon = True
-    t.start()
+    thread = threading.Thread(
+        target=lambda: make_server("", port, app).serve_forever(), daemon=True
+    )
+    thread.start()

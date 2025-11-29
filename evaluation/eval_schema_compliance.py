@@ -1,6 +1,6 @@
 """
 evaluation/eval_schema_compliance.py
-Verifies that LLM outputs conform to the strict JSON schema (Robustness).
+Verifies that LLM outputs conform to the strict JSON schema.
 """
 
 import json
@@ -43,21 +43,30 @@ def evaluate_schema(json_path: str) -> dict:
         "total_records": total,
         "valid_records": valid,
         "compliance_rate": round(score, 2),
-        "errors": errors[:5],  # Top 5
+        "errors": errors[:5],
     }
     return results
 
 
 if __name__ == "__main__":
-    # Default to the output from Day 7/8 run
-    # Find the latest run dir
     import glob
 
-    runs = sorted(glob.glob("../outputs/runs/*"))
+    # Find relative to parent root
+    root = Path(__file__).parents[1]
+    runs_dir = root / "outputs" / "runs"
+
+    runs = sorted(glob.glob(str(runs_dir / "run_*")))
     latest_file = f"{runs[-1]}/enriched_anomalies.json" if runs else "dummy"
 
-    res = evaluate_schema(latest_file)
+    # Override if arg provided
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--file", default=latest_file)
+    args = parser.parse_args()
+
+    res = evaluate_schema(args.file)
     print(json.dumps(res, indent=2))
 
-    with open("./results_schema.json", "w") as f:
-        json.dump(res, f)
+    output_path = Path(__file__).parent / "results_schema.json"
+    with open(output_path, "w") as f:
+        json.dump(res, f, indent=2)
+    print(f"✅ Saved to {output_path}")

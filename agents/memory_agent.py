@@ -5,6 +5,7 @@ Translates Business Objects into Semantic Memories.
 """
 
 import logging
+from pathlib import Path
 from typing import Dict, Any
 from memory.memory_bank import MemoryBank
 
@@ -17,8 +18,12 @@ class MemoryAgent:
     """
 
     def __init__(self):
+        # Find project root relative to this file (agents/memory_agent.py -> ../.. -> root)
+        project_root = Path(__file__).resolve().parent.parent
+        bank_path = project_root / "outputs" / "memory" / "memory_bank.json"
+
         # Connect to the Production Bank
-        self.bank = MemoryBank(persistence_path="../outputs/memory/memory_bank.json")
+        self.bank = MemoryBank(persistence_path=str(bank_path))
 
     def remember_anomaly_resolution(self, anomaly: Dict, action: Dict):
         """

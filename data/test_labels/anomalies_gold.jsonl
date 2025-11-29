@@ -1,3 +1,2 @@
-{"anomaly_id": "syn_global_spike_2016-11-15", "date": "2016-11-15", "type": "global_spike", "factor": 5.0, "original_value": 2145.718, "new_value": 10728.59, "level": "global", "entity": "All_Regions"}
+{"anomaly_id": "syn_global_spike_2016-11-15", "date": "2016-11-15", "type": "global_spike", "factor": 8.0, "original_value": 2145.718, "new_value": 17165.744, "level": "global", "entity": "All_Regions"}
 {"anomaly_id": "syn_dip_Technology_2014-03-18", "date": "2014-03-18", "type": "category_dip", "factor": 0.01, "original_value": 24739.748, "new_value": 247.39748, "level": "category", "entity": "Technology"}
-{"anomaly_id": "syn_dip_Technology_2017-03-23", "date": "2017-03-23", "type": "category_dip", "factor": 0.1, "original_value": 13999.96, "new_value": 1399.996, "level": "category", "entity": "Technology"}

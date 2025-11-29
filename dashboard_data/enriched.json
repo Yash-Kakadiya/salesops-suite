@@ -16,19 +16,18 @@
       "Q3": 914.88,
       "IQR": 827.32
     },
-    "explanation_short": "The Central region experienced sales of 18,336.74, significantly exceeding the expected value of 914.88 by a factor of 21.06.",
-    "explanation_full": "The observed sales of 18,336.74 in the Central region are dramatically higher than the expected sales of 914.88. This represents a score of 21.06, indicating a substantial outlier. Given the statistical context, the actual sales far surpass the third quartile (Q3) of 914.88, suggesting an extraordinary event.",
+    "explanation_short": "Central region sales are significantly higher than expected, driven by a substantial positive deviation from the expected value.",
+    "explanation_full": "The Central region experienced sales of 18,336.74, which is 21.06 times higher than the expected 914.88. This value falls far above the third quartile (Q3) of 914.88, indicating a significant outlier.",
     "suggested_actions": [
-      "Investigate the source of the high sales in the Central region.",
-      "Verify data accuracy for sales in the Central region.",
-      "Analyze if any specific product or customer contributed disproportionately to this spike."
+      "Investigate source of high sales volume in Central region",
+      "Review recent large orders in Central region"
     ],
     "confidence": "High",
     "needs_human_review": true,
     "meta": {
       "model": "gemini-2.5-flash-lite",
-      "latency_ms": 1785,
-      "timestamp": "2025-11-27T17:18:07.362352+00:00",
+      "latency_ms": 2256,
+      "timestamp": "2025-11-29T13:57:22.889548+00:00",
       "version": "1.1"
     }
   },
@@ -49,19 +48,18 @@
       "Q3": 1159.38,
       "IQR": 929.52
     },
-    "explanation_short": "Sales in the South region are significantly higher than expected, indicated by a score of 24.21.",
-    "explanation_full": "The recorded sales for the South region, 23,661.23, are dramatically higher than the expected value of 1,159.38. This deviation is substantial, as the actual sales are over 20 times the expected amount. There are no historical anomalies to compare this against, making it a unique event.",
+    "explanation_short": "South region sales significantly exceeded expectations, driven by a large, atypical order.",
+    "explanation_full": "The sales value of 23,661.23 is drastically higher than the expected value of 1,159.38. This is supported by the deviation score of 24.21. While historical context shows anomalies can occur due to bulk orders (e.g., Acme Corp. in Technology), there is no specific historical event provided for the South region sales that directly explains this spike.",
     "suggested_actions": [
-      "Investigate the source of the reported sales figure to verify accuracy.",
-      "Analyze recent sales activities and deal closures within the South region for potential drivers.",
-      "Confirm if any new product launches or significant marketing campaigns occurred in the South region."
+      "Investigate the source of the large sales value in the South region.",
+      "Verify if this represents a genuine large order or a data error."
     ],
     "confidence": "High",
     "needs_human_review": true,
     "meta": {
       "model": "gemini-2.5-flash-lite",
-      "latency_ms": 1389,
-      "timestamp": "2025-11-27T17:18:09.471017+00:00",
+      "latency_ms": 1892,
+      "timestamp": "2025-11-29T13:57:24.867268+00:00",
       "version": "1.1"
     }
   },
@@ -82,19 +80,19 @@
       "Q3": 579.93,
       "IQR": 370.21
     },
-    "explanation_short": "South region sales significantly exceeded expectations, driven by a substantial deviation from the expected value.",
-    "explanation_full": "The South region reported sales of 8,805.04, which is drastically higher than the expected value of 579.93. This represents a deviation score of 22.22, indicating an extreme anomaly. Given the lack of historical context for similar events, this anomaly warrants immediate investigation to understand the cause.",
+    "explanation_short": "South region sales experienced a significant spike, vastly exceeding expected values.",
+    "explanation_full": "The observed sales value of 8,805.04 in the South region is a substantial outlier when compared to the expected value of 579.93. This deviation is significantly outside the typical range indicated by the Interquartile Range (IQR) of 370.21, as the Q3 value was 579.93. While there's no direct historical precedent for this specific anomaly in the South region, similar sales spikes in the past (e.g., related to bulk orders) have occurred in other categories and can sometimes be attributed to large, infrequent transactions.",
     "suggested_actions": [
-      "Investigate the source of the exceptionally high sales in the South region.",
-      "Verify data integrity for the reported sales figure in the South region.",
-      "Analyze contributing factors such as large deals, new market entries, or reporting errors."
+      "Investigate the source of the large sales spike in the South region.",
+      "Determine if this spike is a recurring pattern or a one-time event.",
+      "Analyze product/customer details for the transactions contributing to the spike."
     ],
     "confidence": "High",
     "needs_human_review": true,
     "meta": {
       "model": "gemini-2.5-flash-lite",
-      "latency_ms": 1596,
-      "timestamp": "2025-11-27T17:18:09.752018+00:00",
+      "latency_ms": 2360,
+      "timestamp": "2025-11-29T13:57:25.184895+00:00",
       "version": "1.1"
     }
   },
@@ -115,19 +113,19 @@
       "Q3": 354.08,
       "IQR": 318.83
     },
-    "explanation_short": "The South region experienced sales significantly above the expected value, indicating a potential anomaly.",
-    "explanation_full": "The observed sales of 6,911.70 in the South region are vastly higher than the expected value of 354.08. This deviation, represented by a score of 20.57, is more than 20 times the upper quartile (Q3) of 354.08, suggesting a substantial and unusual spike in sales. No historical context was found to explain this deviation.",
+    "explanation_short": "Sales in the South region are significantly higher than expected, exceeding the expected value by over 19 times.",
+    "explanation_full": "The observed sales value of 6,911.70 in the South region is an extreme outlier compared to the expected value of 354.08. This represents a deviation of 19.57 times the expected value. The statistical context, with Q3 at 354.08, further highlights this extreme positive anomaly. There is no directly relevant historical context for this specific region and metric in the provided memory bank.",
     "suggested_actions": [
-      "Investigate the source of the unusually high sales in the South region.",
-      "Verify data integrity for sales transactions in the South region.",
-      "Analyze sales performance by product/service and salesperson within the South region."
+      "Investigate the source of the high sales value in the South region.",
+      "Verify data integrity for the reported sales figures.",
+      "Analyze sales trends for the South region over a longer period."
     ],
     "confidence": "High",
     "needs_human_review": true,
     "meta": {
       "model": "gemini-2.5-flash-lite",
-      "latency_ms": 1387,
-      "timestamp": "2025-11-27T17:18:09.752018+00:00",
+      "latency_ms": 2153,
+      "timestamp": "2025-11-29T13:57:26.050614+00:00",
       "version": "1.1"
     }
   },
@@ -148,19 +146,19 @@
       "Q3": 507.17,
       "IQR": 427.63
     },
-    "explanation_short": "Sales in the West region are significantly higher than expected, indicated by a high anomaly score.",
-    "explanation_full": "The reported sales of 7,662.96 in the West region are substantially higher than the expected value of 507.17. This represents a significant deviation, with the actual sales being over 15 times the expected amount. There is no historical data to suggest this is a recurring pattern.",
+    "explanation_short": "Sales in the West region are significantly higher than expected, exceeding the upper quartile of historical data.",
+    "explanation_full": "The observed sales value of 7,662.96 in the West region is an extreme outlier when compared to the expected value of 507.17, which represents the third quartile (Q3) of historical data. The score of 16.73 indicates a substantial deviation. While there's no direct historical precedent for this specific anomaly in the West region, a similar situation with a spike in Technology sales due to a bulk order from Acme Corp. was previously addressed by creating a ticket.",
     "suggested_actions": [
-      "Investigate the source of the sales data for the West region to identify any data entry errors or system glitches.",
-      "Review recent sales activities and any new deals or large orders that may have contributed to this spike.",
-      "Verify if the 'Expected' value is correctly calculated or if it represents a baseline that was significantly exceeded."
+      "Investigate the specific deals contributing to the spike in West region sales.",
+      "Check for any large, non-recurring orders in the West region.",
+      "Monitor future sales in the West region for continued deviation."
     ],
     "confidence": "High",
     "needs_human_review": true,
     "meta": {
       "model": "gemini-2.5-flash-lite",
-      "latency_ms": 1451,
-      "timestamp": "2025-11-27T17:18:11.939115+00:00",
+      "latency_ms": 2337,
+      "timestamp": "2025-11-29T13:57:28.213859+00:00",
       "version": "1.1"
     }
   }
